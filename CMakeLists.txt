@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 project(
     "tuplet"
-    VERSION 1.2.2
+    VERSION 2.1.1
     DESCRIPTION "A Lightweight Tuple Implementation for Modern C++"
     HOMEPAGE_URL "https://github.com/codeinred/tuplet/"
     LANGUAGES CXX)
@@ -22,7 +22,7 @@ list(
     "${CMAKE_CURRENT_LIST_DIR}/cmake")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-target_compile_features(tuplet INTERFACE cxx_std_20)
+target_compile_features(tuplet INTERFACE cxx_std_17)
 
 target_include_directories(
     tuplet INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -70,6 +70,11 @@ option(
     ON)
 
 if(PROJECT_IS_TOP_LEVEL AND BUILD_TESTING)
+    # Enable exception handling on MSVC
+    if(MSVC)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+    endif()
+
     include(CTest)
 
     set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -101,8 +106,8 @@ if(PROJECT_IS_TOP_LEVEL AND BUILD_TESTING)
     find_or_fetch(
         Catch2
         https://github.com/catchorg/catch2.git
-        devel
-        3.0.0)
+        v3.3.2
+        3.3.2)
     FetchContent_MakeAvailable(${remote_dependencies})
 
     add_executable(
@@ -110,7 +115,9 @@ if(PROJECT_IS_TOP_LEVEL AND BUILD_TESTING)
         bench/bench-heterogenous.cpp
         bench/bench-homogenous.cpp
         bench/bench-single-elem.cpp)
-    add_executable(test_tuplet test/test_tuplet.cpp)
+
+    file(GLOB test_files CONFIGURE_DEPENDS test/*.cpp)
+    add_executable(test_tuplet ${test_files})
     target_link_libraries(
         test_tuplet
         tuplet::tuplet
@@ -120,16 +127,30 @@ if(PROJECT_IS_TOP_LEVEL AND BUILD_TESTING)
         bench
         tuplet::tuplet
         benchmark::benchmark_main)
-
-    list(
-        APPEND
-        CMAKE_MODULE_PATH
-        ${CMAKE_INSTALL_PREFIX}/lib/cmake/Catch2)
-    list(
-        APPEND
-        CMAKE_MODULE_PATH
-        ${catch2_SOURCE_DIR}/extras)
     include(CTest)
     include(Catch)
     catch_discover_tests(test_tuplet)
+
+    if(cxx_std_20 IN_LIST CMAKE_CXX_COMPILE_FEATURES)
+        add_executable(test_tuplet_cpp_20 ${test_files})
+        target_link_libraries(
+            test_tuplet_cpp_20
+            tuplet::tuplet
+            fmt::fmt
+            Catch2::Catch2WithMain)
+
+        target_compile_features(test_tuplet_cpp_20 PRIVATE cxx_std_20)
+        list(
+            APPEND
+            CMAKE_MODULE_PATH
+            ${CMAKE_INSTALL_PREFIX}/lib/cmake/Catch2)
+        list(
+            APPEND
+            CMAKE_MODULE_PATH
+            ${catch2_SOURCE_DIR}/extras)
+
+        catch_discover_tests(
+            test_tuplet_cpp_20
+            TEST_SUFFIX " (cpp 20)")
+    endif()
 endif()

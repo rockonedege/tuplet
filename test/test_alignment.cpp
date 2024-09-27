@@ -1,7 +1,8 @@
+#include "util/reflection.hpp"
 #include <catch2/catch_test_macros.hpp>
+#include <cstdint>
 #include <fmt/format.h>
 #include <tuplet/tuple.hpp>
-#include "util/reflection.hpp"
 
 // To get clang-cl: cmake -T ClangCL ...
 
@@ -10,6 +11,8 @@ constexpr decltype(auto) tuple_for_each_impl(
     Tuple&& tuple,
     std::integer_sequence<size_t, Indexes...>,
     Fn&& fn) {
+    using tuplet::get;
+
     (fn(get<Indexes>(std::forward<Tuple>(tuple))), ...);
 
     return std::forward<Fn>(fn);
@@ -41,12 +44,7 @@ constexpr bool is_cl_or_clang_cl = true;
 constexpr bool is_cl_or_clang_cl = false;
 #endif
 
-#define DO_STRINGIZE(a) #a
-#define STRINGIZE(a) DO_STRINGIZE(a)
-
-constexpr bool has_no_unique_address = sizeof(
-    STRINGIZE(TUPLET_NO_UNIQUE_ADDRESS))
-    > 1;
+constexpr bool has_no_unique_address = TUPLET_HAS_NO_UNIQUE_ADDRESS;
 
 struct empty {};
 
@@ -56,25 +54,28 @@ struct struct_with_empty {
     int c;
 };
 
-static_assert(
-    offsetof(struct_with_empty, b) == (has_no_unique_address) ? 0
-                                                              : sizeof(int));
-static_assert(
-    sizeof(struct_with_empty)
-    == (has_no_unique_address ? (sizeof(int) * 2) : (sizeof(int) * 4)));
+#if TUPLET_HAS_NO_UNIQUE_ADDRESS && !(defined _MSC_VER)
+static_assert(offsetof(struct_with_empty, b) == 0);
+static_assert(sizeof(struct_with_empty) == sizeof(int) * 2);
 
 // c's offset is different with cl + [[msvc::no_unique_address]] than gcc/clang
 // with [[no_unique_address]].
 static_assert(
-    offsetof(struct_with_empty, c)
-            == (has_no_unique_address && !is_cl_or_clang_cl)
-        ? sizeof(int)
-        : 2 * sizeof(int));
+    offsetof(struct_with_empty, c) == sizeof(int) || is_cl_or_clang_cl);
+#endif
+
+template <class T>
+uintptr_t pointer_to_int(T const* pointer) {
+    uintptr_t dest {};
+    static_assert(sizeof(T const*) == sizeof(dest));
+    memcpy(&dest, &pointer, sizeof(T const*));
+    return dest;
+}
 
 template <typename Tuple>
 void test_tuple_alignment() {
     Tuple t;
-    const auto base_addr {reinterpret_cast<uintptr_t>(&t)};
+    const auto base_addr = pointer_to_int(&t);
     size_t offset {0}, index {0};
 
     INFO(fmt::format("{}", refl::name_of_type<Tuple>));
@@ -153,7 +154,7 @@ struct alignas(Alignment) aligned_buffer<0, Alignment> {
     aligned_buffer() {}
 };
 
-TEST_CASE("Check alignment") {
+TEST_CASE("Check alignment", "[alignment]") {
     using buff40_64_a = aligned_buffer_aggregate<40, 64>;
     using buff10_16_a = aligned_buffer_aggregate<10, 16>;
     using buff15_32_a = aligned_buffer_aggregate<15, 32>;

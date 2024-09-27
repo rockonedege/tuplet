@@ -5,6 +5,13 @@
 using namespace tuplet::literals;
 using tuplet::tuple;
 
+TEST_CASE("Check very simple assignment", "[assign]") {
+
+    int a = -1;
+    tuplet::tie(a) = tuplet::make_tuple(123);
+    REQUIRE(a == 123);
+}
+
 TEST_CASE("Check assignment with tuplet::tie", "[assign]") {
     int a = 0;
     int b = 0;
@@ -90,4 +97,22 @@ TEST_CASE("Assignment to empty tuple", "[assign]") {
 
     // Checks that self-assignment compiles
     empty_tuple = empty_tuple;
+}
+
+TEST_CASE("Check assignment of tuple with nested tuples 1", "[assign]") {
+    tuplet::tuple<int, tuplet::tuple<int>> t;
+
+    t.assign(1, tuplet::make_tuple(2));
+
+    REQUIRE(t == tuplet::tuple {1, tuplet::tuple {2}});
+}
+
+TEST_CASE("Check assignment of tuple with nested tuples 2", "[assign]") {
+    tuplet::tuple<int, tuplet::tuple<double>, tuplet::tuple<int>> t;
+
+    t.assign(1, tuplet::make_tuple(2.0), tuplet::make_tuple(3));
+
+    REQUIRE(t[0_tag] == 1);
+    REQUIRE(t[1_tag][0_tag] == 2.0);
+    REQUIRE(t[2_tag][0_tag] == 3);
 }

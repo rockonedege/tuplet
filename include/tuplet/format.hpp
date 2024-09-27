@@ -12,7 +12,7 @@ struct fmt::formatter<tuplet::tuple<T...>> {
     constexpr auto parse(format_parse_context& ctx) -> decltype(ctx.begin()) {
         constexpr auto npos = std::string_view::npos;
         std::string_view view(ctx.begin(), ctx.end() - ctx.begin());
-        if (view.size() == 0) {
+        if (view.size() == 0 || (view.size() == 1 && view[0] == '}')) {
             return ctx.begin();
         } else if (view.size() == 3) {
             open_char = view[0];
@@ -41,13 +41,13 @@ struct fmt::formatter<tuplet::tuple<T...>> {
         -> decltype(ctx.out()) {
         if constexpr (sizeof...(T) >= 1) {
             auto print_elems = [&](auto const& first, auto const&... rest) {
-                auto out = format_to(ctx.out(), "{}{}", open_char, first);
-                ((out = format_to(out, "{} {}", separator, rest)), ...);
-                return format_to(out, "{}", close_char);
+                auto out = fmt::format_to(ctx.out(), "{}{}", open_char, first);
+                ((out = fmt::format_to(out, "{} {}", separator, rest)), ...);
+                return fmt::format_to(out, "{}", close_char);
             };
-            return apply(print_elems, p);
+            return tuplet::apply(print_elems, p);
         } else {
-            return format_to(ctx.out(), "{}{}", open_char, close_char);
+            return fmt::format_to(ctx.out(), "{}{}", open_char, close_char);
         }
     }
 };

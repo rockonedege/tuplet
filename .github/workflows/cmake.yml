@@ -19,29 +19,29 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: ubuntu-latest-gcc-10
-            os: ubuntu-latest
+          - name: ubuntu-20.04-gcc-10
+            os: ubuntu-20.04
             compiler: g++-10
             flags: ""
             build_type: Debug
             install_compiler: sudo apt install g++-10
 
-          - name: ubuntu-latest-clang-10
-            os: ubuntu-latest
+          - name: ubuntu-20.04-clang-10
+            os: ubuntu-20.04
             compiler: clang++-10
             flags: ""
             build_type: Debug
             install_compiler: sudo apt install g++-10 && sudo apt install clang-10
 
-          - name: ubuntu-latest-clang-12
-            os: ubuntu-latest
+          - name: ubuntu-20.04-clang-12
+            os: ubuntu-20.04
             compiler: clang++-12
             flags: ""
             build_type: Debug
             install_compiler: sudo apt install g++-10 && sudo apt install clang-12
 
-          - name: ubuntu-latest-clang-10-libc++
-            os: ubuntu-latest
+          - name: ubuntu-20.04-clang-10-libc++
+            os: ubuntu-20.04
             compiler: clang++-10
             flags: "-stdlib=libc++"
             build_type: Debug
@@ -53,8 +53,8 @@ jobs:
               libc++abi1-10
               libc++abi-10-dev
 
-          - name: ubuntu-latest-clang-12-libc++
-            os: ubuntu-latest
+          - name: ubuntu-20.04-clang-12-libc++
+            os: ubuntu-20.04
             compiler: clang++-12
             flags: "-stdlib=libc++"
             build_type: Debug
@@ -72,6 +72,26 @@ jobs:
             flags: ""
             build_type: Debug
             install_compiler: ""
+
+          - name: windows-2019-cl
+            os: windows-2019
+            compiler: cl
+            flags: ""
+            build_type: Debug
+            install_compiler: ""
+
+          - name: windows-2019-MSVC-19.14
+            os: windows-2019
+            compiler: cl
+            flags: ""
+            build_type: Debug
+            install_compiler: 'echo "already installed"'
+            env:
+              CC: cl
+              CXX: cl
+              PreferredToolArchitecture: x64
+              VCToolsVersion: "14.14"
+
 
     steps:
     - uses: actions/checkout@v2
@@ -93,7 +113,7 @@ jobs:
       # Note the current convention is to use the -S and -B options here to specify source
       # and build directories, but this is only available with CMake 3.13 and higher.
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DCMAKE_CXX_FLAGS=${{ matrix.flags }}
+      run: cmake $GITHUB_WORKSPACE -DALWAYS_FETCH=ON -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DCMAKE_CXX_FLAGS=${{ matrix.flags }}
 
     - name: Upload compile_commands.json
       uses: actions/upload-artifact@v2
@@ -105,7 +125,7 @@ jobs:
       working-directory: ${{runner.workspace}}/build
       shell: bash
       # Execute the build.  You can specify a specific target with "--target <NAME>"
-      run: cmake --build . --config ${{ matrix.build_type }}
+      run: cmake --build . --config ${{ matrix.build_type }} --verbose
 
     - name: Test
       working-directory: ${{runner.workspace}}/build

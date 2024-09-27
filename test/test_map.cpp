@@ -7,7 +7,7 @@
 
 TEST_CASE("Invoke map on tuple", "[test-map]") {
     using tuplet::tuple;
-    using std::string_literals::operator""s;
+    using namespace std::string_literals;
 
     auto tup = tuple {10, 20.4, "Hello, world"};
 
@@ -17,9 +17,25 @@ TEST_CASE("Invoke map on tuple", "[test-map]") {
     REQUIRE(tup.map(to_str) == expected);
 }
 
-TEST_CASE("Move elements with tuple.map", "[test-map]") {
+TEST_CASE("Map supports forwarding", "[test-map]") {
     using tuplet::tuple;
-    using std::string_view_literals::operator""sv;
+    using namespace std::string_literals;
+
+    auto tup = tuple {10};
+
+    auto t2 = tup.map([](auto& x) -> decltype(auto) { return x; });
+
+    auto t3 = tup.map([](auto& x) -> decltype(auto) { return std::move(x); });
+
+    static_assert(std::is_same_v<decltype(t2), tuple<int&>>);
+
+    static_assert(std::is_same_v<decltype(t3), tuple<int&&>>);
+}
+
+TEST_CASE("Move elements with tuple.map", "[test-map]") {
+    using tuplet::get;
+    using tuplet::tuple;
+    using namespace std::string_view_literals;
 
     auto tup = tuple {10, 20.4, "Hello, world"sv, std::make_unique<int>(10)};
 
